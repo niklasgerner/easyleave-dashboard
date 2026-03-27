@@ -1,0 +1,67 @@
+name: Update Dashboard Data
+
+on:
+  schedule:
+    - cron: '0 * * * *'
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch Azure DevOps data
+        env:
+          ADO_PAT: ${{ secrets.AZURE_DEVOPS_PAT }}
+        run: |
+          mkdir -p data
+          python3 - << 'PYEOF'
+          import os, json, urllib.request, urllib.parse, base64
+
+          pat = os.environ['ADO_PAT']
+          auth = 'Basic ' + base64.b64encode((':' + pat).encode()).decode()
+          headers = {'Authorization': auth, 'Content-Type': 'application/json'}
+
+          def ado(url, method='GET', body=None):
+              req = urllib.request.Request(url, headers=headers, method=method)
+              if body:
+                  req.data = json.dumps(body).encode('utf-8')
+              with urllib.request.urlopen(req) as r:
+                  return json.loads(r.read().decode('utf-8'))
+
+          base = 'https://dev.azure.com/Simone0766/EasyLeave/_apis'
+
+          wiql_o = "SELECT [System.Id] FROM WorkItems WHERE [System.TeamProject] = 'EasyLeave' AND [System.State] = 'Completed' ORDER BY [Custom.GoLiveDato] ASC"
+          resp_o = ado(base + '/wit/wiql?api-version=7.0', 'POST', {'query': wiql_o})
+          ids_o = [str(w['id']) for w in resp_o.get('workItems', [])]
+          if ids_o:
+              fields_o = 'System.Title,Custom.AntalAnsatte,Custom.KPMAar1,Custom.KPMAar2,Custom.GoLiveDato,Custom.KontraktStartDato,Custom.Implementeringsfee'
+              data_o = ado(base + '/wit/workitems?ids=' + ','.join(ids_o) + '&fields=' + urllib.parse.quote(fields_o) + '&api-version=7.0')
+          else:
+              data_o = {'count': 0, 'value': []}
+          with open('data/okonomi.json', 'w', encoding='utf-8') as f:
+              json.dump(data_o, f, ensure_ascii=False, indent=2)
+
+          wiql_n = "SELECT [System.Id] FROM WorkItems WHERE [System.TeamProject] = 'EasyLeave' AND [System.State] = 'In Progress' ORDER BY [System.ChangedDate] DESC"
+          resp_n = ado(base + '/wit/wiql?api-version=7.0', 'POST', {'query': wiql_n})
+          ids_n = [str(w['id']) for w in resp_n.get('workItems', [])]
+          if ids_n:
+              fields_n = 'System.Title,System.AssignedTo,System.State,Custom.AntalAnsatte,Custom.KPMAar1,Custom.OpfoelgningsDato,Custom.Status,Custom.DemoMiljoeOpsat,Custom.WorkbookDelt,Custom.DatabehandleraftalesDelt,Custom.KontraktDelt,Custom.KontraktUnderskrevet'
+              data_n = ado(base + '/wit/workitems?ids=' + ','.join(ids_n) + '&fields=' + urllib.parse.quote(fields_n) + '&api-version=7.0')
+          else:
+              data_n = {'count': 0, 'value': []}
+          with open('data/onboarding.json', 'w', encoding='utf-8') as f:
+              json.dump(data_n, f, ensure_ascii=False, indent=2)
+
+          print('Done')
+          PYEOF
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/
+          git diff --staged --quiet || (git commit -m "chore: update dashboard data [skip ci]" && git push)
