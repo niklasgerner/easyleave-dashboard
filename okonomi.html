@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>EasyLeave â Ãkonomi</title>
+  <title>EasyLeave Ã¢ÂÂ ÃÂkonomi</title>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <style>
@@ -59,30 +59,30 @@
 <body>
 
 <header>
-  <h1>EasyLeave â Ãkonomi &amp; VÃ¦kvst</h1>
-  <span id="last-updated">IndlÃ¦ser...</span>
+  <h1>EasyLeave Ã¢ÂÂ ÃÂkonomi &amp; VÃÂ¦kvst</h1>
+  <span id="last-updated">IndlÃÂ¦ser...</span>
 </header>
 
 <div class="refresh-bar">
   <span class="dot"></span>
-  <span>Live data fra Azure DevOps Â· Opdateres hvert 60. minut</span>
+  <span>Live data fra Azure DevOps ÃÂ· Opdateres hvert 60. minut</span>
 </div>
 
-<div id="status" class="loading">Henter Ã¸konomidata...</div>
+<div id="status" class="loading">Henter ÃÂ¸konomidata...</div>
 
 <div id="content" style="display:none">
   <div class="kpi-row">
     <div class="kpi-card">
       <div class="kpi-label">Live kunder</div>
-      <div class="kpi-value" id="kpi-customers">â</div>
+      <div class="kpi-value" id="kpi-customers">Ã¢ÂÂ</div>
     </div>
     <div class="kpi-card">
       <div class="kpi-label">Total ansatte</div>
-      <div class="kpi-value" id="kpi-employees">â</div>
+      <div class="kpi-value" id="kpi-employees">Ã¢ÂÂ</div>
     </div>
     <div class="kpi-card">
-      <div class="kpi-label">Total ARR Ãr 1</div>
-      <div class="kpi-value" id="kpi-arr">â</div>
+      <div class="kpi-label">Total ARR ÃÂr 1</div>
+      <div class="kpi-value" id="kpi-arr">Ã¢ÂÂ</div>
     </div>
   </div>
 
@@ -92,15 +92,10 @@
 </div>
 
 <script>
-  // ââ Config ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
-  const ORG     = 'Simone0766';
-  const PROJECT = 'EasyLeave';
-  const PAT     = '4h1W7dD3TQYwDQQWNHCVlcxDtsHwmCEDLeIJxtB4xkHTXjO7IoaBkJQQJ99CCACAAAAAsAo5oAAAASAZDO4CI7';
-  const AUTH    = btoa(':' + PAT);
-  const HEADERS = { 'Authorization': 'Basic ' + AUTH, 'Content-Type': 'application/json' };
+  // Ã¢ÂÂÃ¢ÂÂ Config Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
 
   const WIQL = `SEMECT [System.Id], [System.Title], [System.State],
-    [Custom.AntalAnsatte], [Custom.KPMÃr1], [Custom.KPMÃr2],
+    [Custom.AntalAnsatte], [Custom.KPMÃÂr1], [Custom.KPMÃÂr2],
     [Custom.GoLiveDato], [Custom.KontraktStartDato], [Custom.Implementeringsfee]
     FROM WorkItems
     WHERE [System.TeamProject] = 'EasyLeave'
@@ -110,7 +105,7 @@
   let chartInstance = null;
 
   function fmtKr(val) {
-    if (!val && val !== 0) return 'â';
+    if (!val && val !== 0) return 'Ã¢ÂÂ';
     return Number(val).toLocaleString('da-DK') + ' kr.';
   }
 
@@ -127,30 +122,8 @@
     const contentEl = document.getElementById('content');
 
     try {
-      // Step 1: WIQL
-      const wiqlRes = await fetch(
-        `https://dev.azure.com/${ORG}/${PROJECT}/_apis/wit/wiql?api-version=7.0`,
-        { method: 'POST', headers: HEADERS, body: JSON.stringify({ query: WIQL }) }
-      );
-      if (!wiqlRes.ok) throw new Error(`WIQL ${wiqlRes.status}: ${await wiqlRes.text()}`);
-      const wiqlData = await wiqlRes.json();
-      const ids = (wiqlData.workItems || []).map(wi => wi.id);
-
-      if (ids.length === 0) {
-        statusEl.innerHTML = '<span style="color:#7A9E7E">Ingen live kunder endnu.</span>';
-        return;
-      }
-
-      // Step 2: Details
-      const fields = [
-        'System.Title',
-        'Custom.AntalAnsatte','Custom.KPMÃr1','Custom.KPMÃr2',
-        'Custom.GoLiveDato','Custom.KontraktStartDato','Custom.Implementeringsfee'
-      ].join(',');
-
-      const detailsRes = await fetch(
-        `https://dev.azure.com/${ORG}/${PROJECT}/_apis/wit/workitems?ids=${ids.join(',')}&fields=${fields}&api-version=7.0`,
-        { headers: HEADERS }
+      // Fetch pre-generated data (GitHub Actions updates every hour)
+      const detailsRes = await fetch('./data/okonomi.json');
       );
       if (!detailsRes.ok) throw new Error(`Details ${detailsRes.status}`);
       const detailsData = await detailsRes.json();
@@ -168,7 +141,7 @@
       for (const item of items) {
         const f = item.fields;
         const ansatte = Number(f['Custom.AntalAnsatte']) || 0;
-        const kpm1    = Number(f['Custom.KPMÃr1'])      || 0;
+        const kpm1    = Number(f['Custom.KPMÃÂr1'])      || 0;
         totalEmployees += ansatte;
         totalArr1      += kpm1 * ansatte * 12;
       }
@@ -177,7 +150,7 @@
       document.getElementById('kpi-employees').textContent  = totalEmployees.toLocaleString('da-DK');
       document.getElementById('kpi-arr').textContent        = fmtKr(totalArr1);
 
-      // Build chart data â cumulative by quarter
+      // Build chart data Ã¢ÂÂ cumulative by quarter
       const quarterMap = {};
       let cumArr = 0, cumFee = 0, cumEmp = 0;
 
@@ -186,7 +159,7 @@
         const ql  = quarterLabel(f['Custom.KontraktStartDato'] || f['Custom.GoLiveDato']);
         if (!ql) continue;
         const ansatte = Number(f['Custom.AntalAnsatte']) || 0;
-        const kpm1    = Number(f['Custom.KPMÃr1'])      || 0;
+        const kpm1    = Number(f['Custom.KPMÃÂr1'])      || 0;
         const fee     = Number(f['Custom.Implementeringsfee']) || 0;
 
         if (!quarterMap[ql]) quarterMap[ql] = { arr: 0, fee: 0, emp: 0 };
@@ -224,7 +197,7 @@
               order: 2,
             },
             {
-              label: 'ARR Ãr 1 (akkumuleret)',
+              label: 'ARR ÃÂr 1 (akkumuleret)',
               data: arrData,
               backgroundColor: '#7A9E7E',
               stack: 'revenue',
