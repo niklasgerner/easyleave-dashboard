@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EasyLeave â Onboarding</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Poppins', sans-serif; background: #fff; color: #2D4A3E; font-size: 13px; }
+
+    header {
+      background: #2D4A3E;
+      color: #fff;
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    header h1 { font-size: 16px; font-weight: 600; letter-spacing: 0.5px; }
+    header span { font-size: 11px; opacity: 0.7; }
+
+    .refresh-bar {
+      background: #f0f4f2;
+      border-bottom: 1px solid #dce8e3;
+      padding: 6px 20px;
+      font-size: 11px;
+      color: #7A9E7E;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: #7A9E7E; display: inline-block; }
+
+    .container { padding: 16px 20px; overflow-x: auto; }
+
+    table { width: 100%; border-collapse: collapse; min-width: 900px; }
+    thead tr { background: #2D4A3E; color: #fff; }
+    thead th { padding: 10px 12px; text-align: left; font-weight: 500; font-size: 12px; white-space: nowrap; }
+    tbody tr { border-bottom: 1px solid #eef3f1; }
+    tbody tr:hover { background: #f7faf8; }
+    tbody td { padding: 8px 12px; vertical-align: top; }
+
+    .customer-name { font-weight: 600; color: #2D4A3E; }
+    .assigned-to { font-size: 11px; color: #7A9E7E; }
+
+    .checks { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
+    .check-item { font-size: 10px; padding: 2px 6px; border-radius: 10px; font-weight: 500; white-space: nowrap; }
+    .check-yes { background: #e6f4ea; color: #2D7D46; }
+    .check-no  { background: #fdecea; color: #c0392b; }
+
+    .status-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: 500;
+      background: #e8f5e9;
+      color: #2D4A3E;
+    }
+
+    .loading { text-align: center; padding: 40px; color: #7A9E7E; }
+    .error   { text-align: center; padding: 40px; color: #c0392b; }
+
+    .kpm { font-weight: 600; color: #2D4A3E; }
+    .followup { font-size: 11px; color: #888; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>EasyLeave â Onboarding Overblik</h1>
+  <span id="last-updated">IndlÃ¦ser...</span>
+</header>
+
+<div class="refresh-bar">
+  <span class="dot"></span>
+  <span>Live data fra Azure DevOps Â· Opdateres hvert 60. minut</span>
+</div>
+
+<div class="container">
+  <div id="status" class="loading">Henter onboarding-data...</div>
+  <table id="onboarding-table" style="display:none">
+    <thead>
+      <tr>
+        <th>Ansvarlig</th>
+        <th>Kunde</th>
+        <th>Ansatte</th>
+        <th>KPM Ãr 1</th>
+        <th>OpfÃ¸lgning</th>
+        <th>Status</th>
+        <th>Checkliste</th>
+      </tr>
+    </thead>
+    <tbody id="table-body"></tbody>
+  </table>
+</div>
+
+<script>
+  // ââ Config ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+  const ORG      = 'Simone0766';
+  const PROJECT  = 'EasyLeave';
+  const PAT      = '4h1W7dD3TQYwDQWNHCVlcxDtsHwmCEDLeIJxtB4xkHTXjO7IoaBkJQQJ99CCACAAAAAsAo5oAAAASAZDO4CI7';
+  const AUTH     = btoa(':' + PAT);
+  const HEADERS  = { 'Authorization': 'Basic ' + AUTH, 'Content-Type': 'application/json' };
+
+  const WIQL = `SELECT [System.Id], [System.Title], [System.AssignedTo], [System.State],
+    [Custom.AntalAnsatte], [Custom.KPMÃr1], [Custom.OpfÃ¸lgningsdato], [Custom.Status],
+    [Custom.DemoMiljÃ¸Opsat], [Custom.WorkbookDelt], [Custom.DatabehandleraftaleDelt],
+    [Custom.KontraktDelt], [Custom.KontraktUnderskrevet]
+    FROM WorkItems
+    WHERE [System.TeamProject] = 'EasyLeave'
+    AND [System.State] = 'In Progress'
+    ORDER BY [System.ChangedDate] DESC`;
+
+  const CHECK_FIELDS = [
+    { field: 'Custom.DemoMiljÃ¸Opsat',        label: 'Demo miljÃ¸' },
+    { field: 'Custom.WorkbookDelt',          label: 'Workbook' },
+    { field: 'Custom.DatabehandleraftaleDelt', label: 'Dataaftale' },
+    { field: 'Custom.KontraktDelt',          label: 'Kontrakt delt' },
+    { field: 'Custom.KontraktUnderskrevet',  label: 'Kontrakt u.' },
+  ];
+
+  function fmt(val) {
+    if (val === null || val === undefined || val === '') return 'â';
+    return val;
+  }
+
+  function fmtDate(val) {
+    if (!val) return 'â';
+    try {
+      return new Date(val).toLocaleDateString('da-DK', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    } catch { return val; }
+  }
+
+  function fmtKPM(val) {
+    if (!val && val !== 0) return 'â';
+    return Number(val).toLocaleString('da-DK') + ' kr.';
+  }
+
+  function assignedName(val) {
+    if (!val) return 'â';
+    if (typeof val === 'object') return val.displayName || 'â';
+    return val;
+  }
+
+  async function fetchData() {
+    const statusEl = document.getElementById('status');
+    const tableEl  = document.getElementById('onboarding-table');
+    const bodyEl   = document.getElementById('table-body');
+
+    try {
+      // Step 1: WIQL query for IDs
+      const wiqlRes = await fetch(
+        `https://dev.azure.com/${ORG}/${PROJECT}/_apis/wit/wiql?api-version=7.0`,
+        { method: 'POST', headers: HEADERS, body: JSON.stringify({ query: WIQL }) }
+      );
+      if (!wiqlRes.ok) throw new Error(`WIQL ${wiqlRes.status}: ${await wiqlRes.text()}`);
+      const wiqlData = await wiqlRes.json();
+      const ids = (wiqlData.workItems || []).map(wi => wi.id);
+
+      if (ids.length === 0) {
+        statusEl.innerHTML = '<span style="color:#7A9E7E">Ingen aktive onboarding-kunder i Ã¸jeblikket.</span>';
+        return;
+      }
+
+      // Step 2: Fetch full work item details
+      const fields = [
+        'System.Title','System.AssignedTo','System.State',
+        'Custom.AntalAnsatte','Custom.KPMÃr1','Custom.OpfÃ¸lgningsdato','Custom.Status',
+        'Custom.DemoMiljÃ¸Opsat','Custom.WorkbookDelt','Custom.DatabehandleraftaleDelt',
+        'Custom.KontraktDelt','Custom.KontraktUnderskrevet'
+      ].join(',');
+
+      const detailsRes = await fetch(
+        `https://dev.azure.com/${ORG}/${PROJECT}/_apis/wit/workitems?ids=${ids.join(',')}&fields=${fields}&api-version=7.0`,
+        { headers: HEADERS }
+      );
+      if (!detailsRes.ok) throw new Error(`Details ${detailsRes.status}`);
+      const detailsData = await detailsRes.json();
+      const items = detailsData.value || [];
+
+      // Render table
+      bodyEl.innerHTML = '';
+      for (const item of items) {
+        const f = item.fields;
+        const checks = CHECK_FIELDS.map(c => {
+          const val = f[c.field];
+          const ok  = val === true || val === 1 || val === 'true';
+          return `<span class="check-item ${ok ? 'check-yes' : 'check-no'}">${ok ? 'â' : 'â'} ${c.label}</span>`;
+        }).join('');
+
+        const row = `<tr>
+          <td><div class="assigned-to">${assignedName(f['System.AssignedTo'])}</div></td>
+          <td><div class="customer-name">${fmt(f['System.Title'])}</div></td>
+          <td>${fmt(f['Custom.AntalAnsatte'])}</td>
+          <td class="kpm">${fmtKPM(f['Custom.KPMÃr1'])}</td>
+          <td class="followup">${fmtDate(f['Custom.OpfÃ¸lgningsdato'])}</td>
+          <td><span class="status-badge">${fmt(f['Custom.Status'])}</span></td>
+          <td><div class="checks">${checks}</div></td>
+        </tr>`;
+        bodyEl.insertAdjacentHTML('beforeend', row);
+      }
+
+      statusEl.style.display = 'none';
+      tableEl.style.display  = 'table';
+      document.getElementById('last-updated').textContent =
+        'Sidst opdateret: ' + new Date().toLocaleTimeString('da-DK');
+
+    } catch (err) {
+      statusEl.className = 'error';
+      statusEl.textContent = 'Fejl: ' + err.message;
+      console.error(err);
+    }
+  }
+
+  fetchData();
+  setInterval(fetchData, 60 * 60 * 1000); // refresh hvert 60. minut
+</script>
+</body>
+</html>
