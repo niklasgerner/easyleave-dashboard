@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EasyLeave â Ãkonomi</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Poppins', sans-serif; background: #fff; color: #2D4A3E; font-size: 13px; }
+
+    header {
+      background: #2D4A3E;
+      color: #fff;
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    header h1 { font-size: 16px; font-weight: 600; letter-spacing: 0.5px; }
+    header span { font-size: 11px; opacity: 0.7; }
+
+    .refresh-bar {
+      background: #f0f4f2;
+      border-bottom: 1px solid #dce8e3;
+      padding: 6px 20px;
+      font-size: 11px;
+      color: #7A9E7E;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: #7A9E7E; display: inline-block; }
+
+    .kpi-row {
+      display: flex;
+      gap: 16px;
+      padding: 16px 20px 8px;
+      flex-wrap: wrap;
+    }
+    .kpi-card {
+      flex: 1;
+      min-width: 160px;
+      background: #f7faf8;
+      border: 1px solid #dce8e3;
+      border-radius: 8px;
+      padding: 14px 18px;
+    }
+    .kpi-label { font-size: 11px; color: #7A9E7E; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
+    .kpi-value { font-size: 24px; font-weight: 700; color: #2D4A3E; margin-top: 4px; }
+
+    .chart-container { padding: 8px 20px 16px; position: relative; height: 280px; }
+
+    .loading { text-align: center; padding: 40px; color: #7A9E7E; }
+    .error   { text-align: center; padding: 40px; color: #c0392b; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>EasyLeave â Ãkonomi &amp; VÃ¦kvst</h1>
+  <span id="last-updated">IndlÃ¦ser...</span>
+</header>
+
+<div class="refresh-bar">
+  <span class="dot"></span>
+  <span>Live data fra Azure DevOps Â· Opdateres hvert 60. minut</span>
+</div>
+
+<div id="status" class="loading">Henter Ã¸konomidata...</div>
+
+<div id="content" style="display:none">
+  <div class="kpi-row">
+    <div class="kpi-card">
+      <div class="kpi-label">Live kunder</div>
+      <div class="kpi-value" id="kpi-customers">â</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Total ansatte</div>
+      <div class="kpi-value" id="kpi-employees">â</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Total ARR Ãr 1</div>
+      <div class="kpi-value" id="kpi-arr">â</div>
+    </div>
+  </div>
+
+  <div class="chart-container">
+    <canvas id="growthChart"></canvas>
+  </div>
+</div>
+
+<script>
+  // ââ Config ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+  const ORG     = 'Simone0766';
+  const PROJECT = 'EasyLeave';
+  const PAT     = '4h1W7dD3TQYwDQQWNHCVlcxDtsHwmCEDLeIJxtB4xkHTXjO7IoaBkJQQJ99CCACAAAAAsAo5oAAAASAZDO4CI7';
+  const AUTH    = btoa(':' + PAT);
+  const HEADERS = { 'Authorization': 'Basic ' + AUTH, 'Content-Type': 'application/json' };
+
+  const WIQL = `SEMECT [System.Id], [System.Title], [System.State],
+    [Custom.AntalAnsatte], [Custom.KPMÃr1], [Custom.KPMÃr2],
+    [Custom.GoLiveDato], [Custom.KontraktStartDato], [Custom.Implementeringsfee]
+    FROM WorkItems
+    WHERE [System.TeamProject] = 'EasyLeave'
+    AND [System.State] = 'Completed'
+    ORDER BY [Custom.GoLiveDato] ASC`;
+
+  let chartInstance = null;
+
+  function fmtKr(val) {
+    if (!val && val !== 0) return 'â';
+    return Number(val).toLocaleString('da-DK') + ' kr.';
+  }
+
+  function quarterLabel(dateStr) {
+    if (!dateStr) return null;
+    const d = new Date(dateStr);
+    if (isNaN(d)) return null;
+    const q = Math.ceil((d.getMonth() + 1) / 3);
+    return `${d.getFullYear()} K${q}`;
+  }
+
+  async function fetchData() {
+    const statusEl  = document.getElementById('status');
+    const contentEl = document.getElementById('content');
+
+    try {
+      // Step 1: WIQL
+      const wiqlRes = await fetch(
+        `https://dev.azure.com/${ORG}/${PROJECT}/_apis/wit/wiql?api-version=7.0`,
+        { method: 'POST', headers: HEADERS, body: JSON.stringify({ query: WIQL }) }
+      );
+      if (!wiqlRes.ok) throw new Error(`WIQL ${wiqlRes.status}: ${await wiqlRes.text()}`);
+      const wiqlData = await wiqlRes.json();
+      const ids = (wiqlData.workItems || []).map(wi => wi.id);
+
+      if (ids.length === 0) {
+        statusEl.innerHTML = '<span style="color:#7A9E7E">Ingen live kunder endnu.</span>';
+        return;
+      }
+
+      // Step 2: Details
+      const fields = [
+        'System.Title',
+        'Custom.AntalAnsatte','Custom.KPMÃr1','Custom.KPMÃr2',
+        'Custom.GoLiveDato','Custom.KontraktStartDato','Custom.Implementeringsfee'
+      ].join(',');
+
+      const detailsRes = await fetch(
+        `https://dev.azure.com/${ORG}/${PROJECT}/_apis/wit/workitems?ids=${ids.join(',')}&fields=${fields}&api-version=7.0`,
+        { headers: HEADERS }
+      );
+      if (!detailsRes.ok) throw new Error(`Details ${detailsRes.status}`);
+      const detailsData = await detailsRes.json();
+      const items = (detailsData.value || []).filter(i => i.fields['Custom.GoLiveDato']);
+
+      // Sort by KontraktStartDato
+      items.sort((a, b) => {
+        const da = new Date(a.fields['Custom.KontraktStartDato'] || a.fields['Custom.GoLiveDato'] || 0);
+        const db = new Date(b.fields['Custom.KontraktStartDato'] || b.fields['Custom.GoLiveDato'] || 0);
+        return da - db;
+      });
+
+      // KPIs
+      let totalArr1 = 0, totalEmployees = 0;
+      for (const item of items) {
+        const f = item.fields;
+        const ansatte = Number(f['Custom.AntalAnsatte']) || 0;
+        const kpm1    = Number(f['Custom.KPMÃr1'])      || 0;
+        totalEmployees += ansatte;
+        totalArr1      += kpm1 * ansatte * 12;
+      }
+
+      document.getElementById('kpi-customers').textContent  = items.length;
+      document.getElementById('kpi-employees').textContent  = totalEmployees.toLocaleString('da-DK');
+      document.getElementById('kpi-arr').textContent        = fmtKr(totalArr1);
+
+      // Build chart data â cumulative by quarter
+      const quarterMap = {};
+      let cumArr = 0, cumFee = 0, cumEmp = 0;
+
+      for (const item of items) {
+        const f   = item.fields;
+        const ql  = quarterLabel(f['Custom.KontraktStartDato'] || f['Custom.GoLiveDato']);
+        if (!ql) continue;
+        const ansatte = Number(f['Custom.AntalAnsatte']) || 0;
+        const kpm1    = Number(f['Custom.KPMÃr1'])      || 0;
+        const fee     = Number(f['Custom.Implementeringsfee']) || 0;
+
+        if (!quarterMap[ql]) quarterMap[ql] = { arr: 0, fee: 0, emp: 0 };
+        quarterMap[ql].arr += kpm1 * ansatte * 12;
+        quarterMap[ql].fee += fee;
+        quarterMap[ql].emp += ansatte;
+      }
+
+      const labels = Object.keys(quarterMap).sort();
+      const arrData = [], feeData = [], empData = [];
+      let cumA = 0, cumF = 0, cumE = 0;
+
+      for (const lbl of labels) {
+        cumA += quarterMap[lbl].arr;
+        cumF += quarterMap[lbl].fee;
+        cumE += quarterMap[lbl].emp;
+        arrData.push(cumA);
+        feeData.push(cumF);
+        empData.push(cumE);
+      }
+
+      // Chart
+      if (chartInstance) chartInstance.destroy();
+      const ctx = document.getElementById('growthChart').getContext('2d');
+      chartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: 'Implementeringsfee (akkumuleret)',
+              data: feeData,
+              backgroundColor: '#2D4A3E',
+              stack: 'revenue',
+              order: 2,
+            },
+            {
+              label: 'ARR Ãr 1 (akkumuleret)',
+              data: arrData,
+              backgroundColor: '#7A9E7E',
+              stack: 'revenue',
+              order: 2,
+            },
+            {
+              label: 'Ansatte (akkumuleret)',
+              data: empData,
+              type: 'line',
+              borderColor: '#f0a500',
+              backgroundColor: 'transparent',
+              borderWidth: 2,
+              pointRadius: 4,
+              pointBackgroundColor: '#f0a500',
+              yAxisID: 'y2',
+              order: 1,
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: {
+              labels: { font: { family: 'Poppins', size: 11 }, color: '#2D4A3E' }
+            },
+            tooltip: {
+              callbacks: {
+                label(ctx) {
+                  if (ctx.dataset.yAxisID === 'y2') {
+                    return `${ctx.dataset.label}: ${Number(ctx.raw).toLocaleString('da-DK')} ansatte`;
+                  }
+                  return `${ctx.dataset.label}: ${Number(ctx.raw).toLocaleString('da-DK')} kr.`;
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              stacked: true,
+              grid: { display: false },
+              ticks: { font: { family: 'Poppins', size: 10 }, color: '#2D4A3E' }
+            },
+            y: {
+              stacked: true,
+              ticks: {
+                font: { family: 'Poppins', size: 10 },
+                color: '#2D4A3E',
+                callback: v => Number(v).toLocaleString('da-DK') + ' kr.'
+              },
+              grid: { color: '#eef3f1' }
+            },
+            y2: {
+              position: 'right',
+              grid: { display: false },
+              ticks: { font: { family: 'Poppins', size: 10 }, color: '#f0a500', callback: v => v + ' ans.' }
+            }
+          }
+        }
+      });
+
+      statusEl.style.display  = 'none';
+      contentEl.style.display = 'block';
+      document.getElementById('last-updated').textContent =
+        'Sidst opdateret: ' + new Date().toLocaleTimeString('da-DK');
+
+    } catch (err) {
+      statusEl.className = 'error';
+      statusEl.textContent = 'Fejl: ' + err.message;
+      console.error(err);
+    }
+  }
+
+  fetchData();
+  setInterval(fetchData, 60 * 60 * 1000);
+</script>
+</body>
+</html>
