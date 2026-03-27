@@ -3,12 +3,18 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>EasyLeave Ã¢ÂÂ ÃÂkonomi</title>
+  <title>EasyLeave – Økonomi</title>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Poppins', sans-serif; background: #fff; color: #2D4A3E; font-size: 13px; }
+
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: #fff;
+      color: #2D4A3E;
+      font-size: 13px;
+    }
 
     header {
       background: #2D4A3E;
@@ -18,8 +24,17 @@
       align-items: center;
       justify-content: space-between;
     }
-    header h1 { font-size: 16px; font-weight: 600; letter-spacing: 0.5px; }
-    header span { font-size: 11px; opacity: 0.7; }
+
+    header h1 {
+      font-size: 16px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+
+    header span {
+      font-size: 11px;
+      opacity: 0.7;
+    }
 
     .refresh-bar {
       background: #f0f4f2;
@@ -31,7 +46,14 @@
       align-items: center;
       gap: 8px;
     }
-    .dot { width: 8px; height: 8px; border-radius: 50%; background: #7A9E7E; display: inline-block; }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #7A9E7E;
+      display: inline-block;
+    }
 
     .kpi-row {
       display: flex;
@@ -39,6 +61,7 @@
       padding: 16px 20px 8px;
       flex-wrap: wrap;
     }
+
     .kpi-card {
       flex: 1;
       min-width: 160px;
@@ -47,42 +70,70 @@
       border-radius: 8px;
       padding: 14px 18px;
     }
-    .kpi-label { font-size: 11px; color: #7A9E7E; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
-    .kpi-value { font-size: 24px; font-weight: 700; color: #2D4A3E; margin-top: 4px; }
 
-    .chart-container { padding: 8px 20px 16px; position: relative; height: 280px; }
+    .kpi-label {
+      font-size: 11px;
+      color: #7A9E7E;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
 
-    .loading { text-align: center; padding: 40px; color: #7A9E7E; }
-    .error   { text-align: center; padding: 40px; color: #c0392b; }
+    .kpi-value {
+      font-size: 24px;
+      font-weight: 700;
+      color: #2D4A3E;
+      margin-top: 4px;
+    }
+
+    .chart-container {
+      padding: 8px 20px 16px;
+      position: relative;
+      height: 280px;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #7A9E7E;
+    }
+
+    .error {
+      text-align: center;
+      padding: 40px;
+      color: #c0392b;
+    }
   </style>
 </head>
 <body>
 
 <header>
-  <h1>EasyLeave Ã¢ÂÂ ÃÂkonomi &amp; VÃÂ¦kvst</h1>
-  <span id="last-updated">IndlÃÂ¦ser...</span>
+  <h1>EasyLeave — Økonomi &amp; Vækst</h1>
+  <span id="last-updated">Indlæser...</span>
 </header>
 
 <div class="refresh-bar">
   <span class="dot"></span>
-  <span>Live data fra Azure DevOps ÃÂ· Opdateres hvert 60. minut</span>
+  <span>Live data fra Azure DevOps · Opdateres hvert 60. minut</span>
 </div>
 
-<div id="status" class="loading">Henter ÃÂ¸konomidata...</div>
+<div id="status" class="loading">Henter økonomidata...</div>
 
 <div id="content" style="display:none">
   <div class="kpi-row">
     <div class="kpi-card">
       <div class="kpi-label">Live kunder</div>
-      <div class="kpi-value" id="kpi-customers">Ã¢ÂÂ</div>
+      <div class="kpi-value" id="kpi-customers">–</div>
     </div>
+
     <div class="kpi-card">
       <div class="kpi-label">Total ansatte</div>
-      <div class="kpi-value" id="kpi-employees">Ã¢ÂÂ</div>
+      <div class="kpi-value" id="kpi-employees">–</div>
     </div>
+
     <div class="kpi-card">
-      <div class="kpi-label">Total ARR ÃÂr 1</div>
-      <div class="kpi-value" id="kpi-arr">Ã¢ÂÂ</div>
+      <div class="kpi-label">Total ARR år 1</div>
+      <div class="kpi-value" id="kpi-arr">–</div>
     </div>
   </div>
 
@@ -92,10 +143,8 @@
 </div>
 
 <script>
-  // Ã¢ÂÂÃ¢ÂÂ Config Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂÃ¢ÂÂ
-
-  const WIQL = `SEMECT [System.Id], [System.Title], [System.State],
-    [Custom.AntalAnsatte], [Custom.KPMÃÂr1], [Custom.KPMÃÂr2],
+  const WIQL = `SELECT [System.Id], [System.Title], [System.State],
+    [Custom.AntalAnsatte], [Custom.KPMAr1], [Custom.KPMAr2],
     [Custom.GoLiveDato], [Custom.KontraktStartDato], [Custom.Implementeringsfee]
     FROM WorkItems
     WHERE [System.TeamProject] = 'EasyLeave'
@@ -105,108 +154,125 @@
   let chartInstance = null;
 
   function fmtKr(val) {
-    if (!val && val !== 0) return 'Ã¢ÂÂ';
+    if (val === null || val === undefined || isNaN(val)) return '–';
     return Number(val).toLocaleString('da-DK') + ' kr.';
   }
 
   function quarterLabel(dateStr) {
     if (!dateStr) return null;
     const d = new Date(dateStr);
-    if (isNaN(d)) return null;
+    if (isNaN(d.getTime())) return null;
     const q = Math.ceil((d.getMonth() + 1) / 3);
     return `${d.getFullYear()} K${q}`;
   }
 
   async function fetchData() {
-    const statusEl  = document.getElementById('status');
+    const statusEl = document.getElementById('status');
     const contentEl = document.getElementById('content');
 
     try {
-      // Fetch pre-generated data (GitHub Actions updates every hour)
       const detailsRes = await fetch('./data/okonomi.json');
-      );
-      if (!detailsRes.ok) throw new Error(`Details ${detailsRes.status}`);
-      const detailsData = await detailsRes.json();
-      const items = (detailsData.value || []).filter(i => i.fields['Custom.GoLiveDato']);
+      if (!detailsRes.ok) throw new Error(`Kunne ikke hente datafilen (${detailsRes.status})`);
 
-      // Sort by KontraktStartDato
+      const detailsData = await detailsRes.json();
+      const rawItems = detailsData.value || [];
+
+      const items = rawItems.filter(i =>
+        i.fields &&
+        (i.fields['Custom.GoLiveDato'] || i.fields['Custom.KontraktStartDato'])
+      );
+
       items.sort((a, b) => {
         const da = new Date(a.fields['Custom.KontraktStartDato'] || a.fields['Custom.GoLiveDato'] || 0);
         const db = new Date(b.fields['Custom.KontraktStartDato'] || b.fields['Custom.GoLiveDato'] || 0);
         return da - db;
       });
 
-      // KPIs
-      let totalArr1 = 0, totalEmployees = 0;
+      let totalArr1 = 0;
+      let totalEmployees = 0;
+
       for (const item of items) {
-        const f = item.fields;
+        const f = item.fields || {};
         const ansatte = Number(f['Custom.AntalAnsatte']) || 0;
-        const kpm1    = Number(f['Custom.KPMÃÂr1'])      || 0;
+        const kpm1 = Number(f['Custom.KPMAr1']) || 0;
+
         totalEmployees += ansatte;
-        totalArr1      += kpm1 * ansatte * 12;
+        totalArr1 += kpm1 * ansatte * 12;
       }
 
-      document.getElementById('kpi-customers').textContent  = items.length;
-      document.getElementById('kpi-employees').textContent  = totalEmployees.toLocaleString('da-DK');
-      document.getElementById('kpi-arr').textContent        = fmtKr(totalArr1);
+      document.getElementById('kpi-customers').textContent = items.length.toLocaleString('da-DK');
+      document.getElementById('kpi-employees').textContent = totalEmployees.toLocaleString('da-DK');
+      document.getElementById('kpi-arr').textContent = fmtKr(totalArr1);
 
-      // Build chart data Ã¢ÂÂ cumulative by quarter
       const quarterMap = {};
-      let cumArr = 0, cumFee = 0, cumEmp = 0;
 
       for (const item of items) {
-        const f   = item.fields;
-        const ql  = quarterLabel(f['Custom.KontraktStartDato'] || f['Custom.GoLiveDato']);
+        const f = item.fields || {};
+        const ql = quarterLabel(f['Custom.KontraktStartDato'] || f['Custom.GoLiveDato']);
         if (!ql) continue;
-        const ansatte = Number(f['Custom.AntalAnsatte']) || 0;
-        const kpm1    = Number(f['Custom.KPMÃÂr1'])      || 0;
-        const fee     = Number(f['Custom.Implementeringsfee']) || 0;
 
-        if (!quarterMap[ql]) quarterMap[ql] = { arr: 0, fee: 0, emp: 0 };
+        const ansatte = Number(f['Custom.AntalAnsatte']) || 0;
+        const kpm1 = Number(f['Custom.KPMAr1']) || 0;
+        const fee = Number(f['Custom.Implementeringsfee']) || 0;
+
+        if (!quarterMap[ql]) {
+          quarterMap[ql] = { arr: 0, fee: 0, emp: 0 };
+        }
+
         quarterMap[ql].arr += kpm1 * ansatte * 12;
         quarterMap[ql].fee += fee;
         quarterMap[ql].emp += ansatte;
       }
 
       const labels = Object.keys(quarterMap).sort();
-      const arrData = [], feeData = [], empData = [];
-      let cumA = 0, cumF = 0, cumE = 0;
+      const arrData = [];
+      const feeData = [];
+      const empData = [];
+
+      let cumA = 0;
+      let cumF = 0;
+      let cumE = 0;
 
       for (const lbl of labels) {
         cumA += quarterMap[lbl].arr;
         cumF += quarterMap[lbl].fee;
         cumE += quarterMap[lbl].emp;
+
         arrData.push(cumA);
         feeData.push(cumF);
         empData.push(cumE);
       }
 
-      // Chart
-      if (chartInstance) chartInstance.destroy();
+      if (chartInstance) {
+        chartInstance.destroy();
+      }
+
       const ctx = document.getElementById('growthChart').getContext('2d');
+
       chartInstance = new Chart(ctx, {
-        type: 'bar',
         data: {
-          labels,
+          labels: labels,
           datasets: [
             {
+              type: 'bar',
               label: 'Implementeringsfee (akkumuleret)',
               data: feeData,
               backgroundColor: '#2D4A3E',
               stack: 'revenue',
-              order: 2,
+              order: 2
             },
             {
-              label: 'ARR ÃÂr 1 (akkumuleret)',
+              type: 'bar',
+              label: 'ARR år 1 (akkumuleret)',
               data: arrData,
               backgroundColor: '#7A9E7E',
               stack: 'revenue',
-              order: 2,
+              order: 2
             },
             {
+              type: 'line',
               label: 'Ansatte (akkumuleret)',
               data: empData,
-              type: 'line',
               borderColor: '#f0a500',
               backgroundColor: 'transparent',
               borderWidth: 2,
@@ -214,24 +280,34 @@
               pointBackgroundColor: '#f0a500',
               yAxisID: 'y2',
               order: 1,
+              tension: 0.2
             }
           ]
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          interaction: { mode: 'index', intersect: false },
+          interaction: {
+            mode: 'index',
+            intersect: false
+          },
           plugins: {
             legend: {
-              labels: { font: { family: 'Poppins', size: 11 }, color: '#2D4A3E' }
+              labels: {
+                font: {
+                  family: 'Poppins',
+                  size: 11
+                },
+                color: '#2D4A3E'
+              }
             },
             tooltip: {
               callbacks: {
-                label(ctx) {
-                  if (ctx.dataset.yAxisID === 'y2') {
-                    return `${ctx.dataset.label}: ${Number(ctx.raw).toLocaleString('da-DK')} ansatte`;
+                label(context) {
+                  if (context.dataset.yAxisID === 'y2') {
+                    return `${context.dataset.label}: ${Number(context.raw).toLocaleString('da-DK')} ansatte`;
                   }
-                  return `${ctx.dataset.label}: ${Number(ctx.raw).toLocaleString('da-DK')} kr.`;
+                  return `${context.dataset.label}: ${Number(context.raw).toLocaleString('da-DK')} kr.`;
                 }
               }
             }
@@ -239,28 +315,54 @@
           scales: {
             x: {
               stacked: true,
-              grid: { display: false },
-              ticks: { font: { family: 'Poppins', size: 10 }, color: '#2D4A3E' }
+              grid: {
+                display: false
+              },
+              ticks: {
+                font: {
+                  family: 'Poppins',
+                  size: 10
+                },
+                color: '#2D4A3E'
+              }
             },
             y: {
               stacked: true,
-              ticks: {
-                font: { family: 'Poppins', size: 10 },
-                color: '#2D4A3E',
-                callback: v => Number(v).toLocaleString('da-DK') + ' kr.'
+              grid: {
+                color: '#eef3f1'
               },
-              grid: { color: '#eef3f1' }
+              ticks: {
+                font: {
+                  family: 'Poppins',
+                  size: 10
+                },
+                color: '#2D4A3E',
+                callback: function(value) {
+                  return Number(value).toLocaleString('da-DK') + ' kr.';
+                }
+              }
             },
             y2: {
               position: 'right',
-              grid: { display: false },
-              ticks: { font: { family: 'Poppins', size: 10 }, color: '#f0a500', callback: v => v + ' ans.' }
+              grid: {
+                display: false
+              },
+              ticks: {
+                font: {
+                  family: 'Poppins',
+                  size: 10
+                },
+                color: '#f0a500',
+                callback: function(value) {
+                  return value + ' ans.';
+                }
+              }
             }
           }
         }
       });
 
-      statusEl.style.display  = 'none';
+      statusEl.style.display = 'none';
       contentEl.style.display = 'block';
       document.getElementById('last-updated').textContent =
         'Sidst opdateret: ' + new Date().toLocaleTimeString('da-DK');
@@ -275,5 +377,6 @@
   fetchData();
   setInterval(fetchData, 60 * 60 * 1000);
 </script>
+
 </body>
 </html>
